@@ -47,7 +47,7 @@ For example,
 Key Pattern = "Attribute*Gain" matches: "AttributeStrengthGain", "AttributeIntelligenceGain", "AttributeAgilityGain"
 
 ## 4 Change Language
-The software supports English and Chinese interfaces. If you want to add support for other languages, you can create a UTF-8 encoded text file following the format of [English.txt](https://github.com/ado-cs/Dota2Editor/blob/main/English.txt) and save it in the <working_directory/langs>.
+The software supports English and Chinese interfaces. If you want to add support for other languages, you can create a UTF-8 encoded text file following the format of [English.txt](https://github.com/ado-cs/Dota2Editor/blob/master/English.txt) and save it in the <working_directory/langs>.
 
 <a id="cn"></a>
 # 中文文档
@@ -93,4 +93,4 @@ The software supports English and Chinese interfaces. If you want to add support
 键的模式 = "Attribute*Gain" 匹配: "AttributeStrengthGain", "AttributeIntelligenceGain", "AttributeAgilityGain"
 
 ## 4 改变语言
-这个软件支持英文和中文. 如果你想要支持其他语言, 你可以参照 [English](https://github.com/ado-cs/Dota2Editor/blob/main/English.txt) 创建一个 UTF-8 编码的文本文件并将它保存在 <工作目录/langs> 。
+这个软件支持英文和中文. 如果你想要支持其他语言, 你可以参照 [English](https://github.com/ado-cs/Dota2Editor/blob/master/English.txt) 创建一个 UTF-8 编码的文本文件并将它保存在 <工作目录/langs> 。
