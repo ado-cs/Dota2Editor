@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Dota2Editor.Basic
 {
-    public class DSONObject : IDictionary<string, IDSONItem>, IDSONItem
+    public class DSONObject(IDSONItem? parent) : IDSONItem(parent), IEnumerable<KeyValuePair<string, IDSONItem>>
     {
         public static DSONObject Parse(string text)
         {
@@ -53,7 +53,7 @@ namespace Dota2Editor.Basic
                             }
                             else
                             {
-                                var obj = new DSONObject();
+                                var obj = new DSONObject(current);
                                 current.Add(key, obj);
                                 current = obj;
                             }
@@ -78,15 +78,11 @@ namespace Dota2Editor.Basic
                             key = str;
                             keyLineNum = lineNum;
                         }
-                        else if (keyLineNum == lineNum)
+                        else
                         {
-                            current.TryAdd(key, new DSONValue(str));
+                            current.TryAdd(key, new DSONValue(str, current));
                             key = null;
                         }
-                        else if (keyLineNum == lineNum) 
-                            throw new InvalidDataException(Globalization.Get("DSONObject.IllegalPair1", keyLineNum));
-                        else
-                            throw new InvalidDataException(Globalization.Get("DSONObject.IllegalPair2", keyLineNum, lineNum));
                         flag = 0;
                     }
                     else if (c == '\r' || c == '\n') throw new InvalidDataException(Globalization.Get("DSONObject.IllegalColons", lineNum));
@@ -112,11 +108,9 @@ namespace Dota2Editor.Basic
                 else Add(key, value);
             } 
         }
-        public string? RootKey => _orderedKeys.Count == 1 ? _orderedKeys[0] : null;
         public ICollection<string> Keys => [.. _orderedKeys];
         public ICollection<IDSONItem> Values => _keyValues.Values;
         public int Count => _keyValues.Count;
-        bool ICollection<KeyValuePair<string, IDSONItem>>.IsReadOnly => false;
 
         public void Add(string key, IDSONItem value)
         {
@@ -141,31 +135,12 @@ namespace Dota2Editor.Basic
             _orderedKeys.Clear();
         }
 
-        public bool Remove(string key, [MaybeNullWhen(false)] out IDSONItem value)
-        {
-            if (!_keyValues.Remove(key, out value)) return false;
-            _orderedKeys.Remove(key);
-            return true;
-        }
-
         public bool TryAdd(string key, IDSONItem value)
         {
             if (!_keyValues.TryAdd(key, value)) return false;
             _orderedKeys.Add(key);
             return true;
         }
-
-        void ICollection<KeyValuePair<string, IDSONItem>>.Add(KeyValuePair<string, IDSONItem> keyValuePair) =>
-            throw new NotImplementedException();
-
-        bool ICollection<KeyValuePair<string, IDSONItem>>.Contains(KeyValuePair<string, IDSONItem> item) =>
-            throw new NotImplementedException();
-
-        void ICollection<KeyValuePair<string, IDSONItem>>.CopyTo(KeyValuePair<string, IDSONItem>[] array, int arrayIndex) =>
-            throw new NotImplementedException();
-
-        bool ICollection<KeyValuePair<string, IDSONItem>>.Remove(KeyValuePair<string, IDSONItem> item) =>
-            throw new NotImplementedException();
 
         public IEnumerator<KeyValuePair<string, IDSONItem>> GetEnumerator() => new Enumerator(_keyValues, _orderedKeys);
 
@@ -177,7 +152,6 @@ namespace Dota2Editor.Basic
             private int _index;
             private readonly Dictionary<string, IDSONItem> _dict;
             private readonly List<string> _orderedKeys;
-
 
             public KeyValuePair<string, IDSONItem> Current => _current;
 
@@ -213,28 +187,58 @@ namespace Dota2Editor.Basic
 
         #endregion
 
-        public DSONObject Decomposition() => _orderedKeys.Count == 1 && _keyValues[_orderedKeys[0]] is DSONObject o ? o.Decomposition() : this;
+        public DSONObject() : this(null) { }
 
-        public void FindModifiedValues(DSONObject originalObj)
-            => Walk(this, originalObj, (v1, v2) => v1.Modified = !string.Equals(v1.Text, v2.Text));
+        public override string Text { get => ToString(); set { } }
 
-        public void UpdateWithModifiedValues(DSONObject modifiedObj)
-            => Walk(this, modifiedObj, (v1, v2) => { if (v2.Modified) v1.Text = v2.Text; });
+        public string? RootKey => _orderedKeys.Count == 1 ? _orderedKeys[0] : null;
 
-        public void UpdateValues(DSONObject modifiedObj)
-            => Walk(this, modifiedObj, (v1, v2) => v1.Text = v2.Text);
+        public DSONObject RootValue => _orderedKeys.Count == 1 && _keyValues[_orderedKeys[0]] is DSONObject o ? o.RootValue : this;
 
-        public DSONObject? ExtractChangedValuesFrom(DSONObject originalObj)
+        public DSONObject? ExtractModifiedValues
+        {
+            get
+            {
+                if (!Modified) return null;
+                var clone = new DSONObject();
+                foreach (var pair in this)
+                {
+                    var val = pair.Value;
+                    if (!val.Modified) continue;
+                    IDSONItem? item = null;
+                    if (val is DSONObject a) item = a.ExtractModifiedValues;
+                    else if (val is DSONValue) item = val;
+                    if (item != null) clone.Add(pair.Key, item);
+                }
+                return clone;
+            }
+        }
+
+        public void UpdateValues(DSONObject newObj)
+        {
+            foreach (var pair in this)
+            {
+                if (newObj.TryGetValue(pair.Key, out var val))
+                {
+                    var v1 = pair.Value;
+                    var v2 = val;
+                    if (v1 is DSONObject a1 && v2 is DSONObject a2) a1.UpdateValues(a2);
+                    else if (v1 is DSONValue && v2 is DSONValue) v1.Text = v2.Text;
+                }
+            }
+        }
+
+        public DSONObject? FindChanges(DSONObject rawObj)
         {
             DSONObject? clone = null;
             foreach (var pair in this)
             {
-                if (originalObj.TryGetValue(pair.Key, out var val2))
+                if (rawObj.TryGetValue(pair.Key, out var v2))
                 {
-                    var val1 = pair.Value;
+                    var v1 = pair.Value;
                     IDSONItem? item = null;
-                    if (val1 is DSONObject a1 && val2 is DSONObject a2) item = a1.ExtractChangedValuesFrom(a2);
-                    else if (val1 is DSONValue b1 && val2 is DSONValue b2 && !Equals(b1.Text, b2.Text)) item = val1;
+                    if (v1 is DSONObject a1 && v2 is DSONObject a2) item = a1.FindChanges(a2);
+                    else if (v1 is DSONValue && v2 is DSONValue && !Equals(v1.Text, v2.Text)) item = v1;
                     if (item != null)
                     {
                         clone ??= [];
@@ -245,47 +249,18 @@ namespace Dota2Editor.Basic
             return clone;
         }
 
-        public DSONObject? ExtractChangedValues()
+        public override string ToString()
         {
-            DSONObject? clone = null;
-            foreach (var pair in this)
-            {
-                var val = pair.Value;
-                IDSONItem? item = null;
-                if (val is DSONObject a) item = a.ExtractChangedValues();
-                else if (val is DSONValue c && c.Modified) item = c;
-                if (item != null)
-                {
-                    clone ??= [];
-                    clone.Add(pair.Key, item);
-                }
-            }
-            return clone;
-        }
-
-        private static void Walk(DSONObject obj1, DSONObject obj2, Action<DSONValue, DSONValue> valueReceiver)
-        {
-            if (obj1 == null || obj2 == null) return;
-            foreach (var pair in obj1)
-            {
-                if (obj2.TryGetValue(pair.Key, out var val))
-                {
-                    if (pair.Value is DSONObject a1 && val is DSONObject a2) Walk(a1, a2, valueReceiver);
-                    else if (pair.Value is DSONValue c1 && val is DSONValue c2) valueReceiver(c1, c2);
-                }
-            }
-        }
-
-        private static void AppendEmptyChar(StringBuilder sb, int indent)
-        {
-            for (var i = 0; i < indent; i++) sb.Append('\t');
+            var sb = new StringBuilder();
+            AppendString(this, sb, 0);
+            return sb.ToString();
         }
 
         private static void AppendString(DSONObject obj, StringBuilder sb, int indent)
         {
             foreach (var key in obj._orderedKeys)
             {
-                AppendEmptyChar(sb, indent);
+                for (var i = 0; i < indent; i++) sb.Append('\t');
                 sb.Append('"');
                 sb.Append(key);
                 sb.Append('"');
@@ -305,13 +280,6 @@ namespace Dota2Editor.Basic
                     sb.AppendLine("\"");
                 }
             }
-        }
-
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            AppendString(this, sb, 0);
-            return sb.ToString();
         }
     }
 }

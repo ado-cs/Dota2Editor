@@ -17,7 +17,7 @@ namespace Dota2Editor.Basic
             var text = ENCODING.GetString(data);
             if (text.Contains(SEARCH_PATH + folderName)) return false;
 
-            //insert text 'Game xxx' into block 'SearchPaths' of file Gameinfo.gi
+            //append new line 'Game xxx' to block 'SearchPaths' of file 'Gameinfo.gi'
 
             var commentStart = -1;
             var commentEnd = -1;

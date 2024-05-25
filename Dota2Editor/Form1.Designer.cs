@@ -59,8 +59,10 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             flowLayoutPanel1 = new FlowLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
-            searchingBox1 = new Panels.SearchingBox();
+            comboBox1 = new ComboBox();
+            flowLayoutPanel2 = new FlowLayoutPanel();
             button1 = new Button();
+            button2 = new Button();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
             splitContainer1.Panel1.SuspendLayout();
@@ -69,6 +71,7 @@
             contextMenuStrip1.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
+            flowLayoutPanel2.SuspendLayout();
             SuspendLayout();
             // 
             // menuStrip1
@@ -76,7 +79,7 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { toolStripMenuItemG, toolStripMenuItemV, toolStripMenuItemH, toolStripMenuItemL });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(981, 25);
+            menuStrip1.Size = new Size(884, 25);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -183,6 +186,7 @@
             // splitContainer1
             // 
             splitContainer1.Dock = DockStyle.Fill;
+            splitContainer1.FixedPanel = FixedPanel.Panel1;
             splitContainer1.Location = new Point(0, 25);
             splitContainer1.Name = "splitContainer1";
             // 
@@ -190,12 +194,13 @@
             // 
             splitContainer1.Panel1.Controls.Add(listBox1);
             splitContainer1.Panel1.Padding = new Padding(12, 4, 4, 4);
+            splitContainer1.Panel1MinSize = 200;
             // 
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(tableLayoutPanel1);
-            splitContainer1.Size = new Size(981, 599);
-            splitContainer1.SplitterDistance = 221;
+            splitContainer1.Size = new Size(884, 536);
+            splitContainer1.SplitterDistance = 200;
             splitContainer1.TabIndex = 3;
             splitContainer1.Visible = false;
             // 
@@ -208,7 +213,7 @@
             listBox1.Location = new Point(12, 4);
             listBox1.Name = "listBox1";
             listBox1.SelectionMode = SelectionMode.MultiSimple;
-            listBox1.Size = new Size(205, 591);
+            listBox1.Size = new Size(184, 528);
             listBox1.TabIndex = 0;
             // 
             // contextMenuStrip1
@@ -252,7 +257,7 @@
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 89.55224F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
-            tableLayoutPanel1.Size = new Size(756, 599);
+            tableLayoutPanel1.Size = new Size(680, 536);
             tableLayoutPanel1.TabIndex = 1;
             // 
             // flowLayoutPanel1
@@ -262,54 +267,77 @@
             flowLayoutPanel1.Location = new Point(0, 39);
             flowLayoutPanel1.Margin = new Padding(0);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Padding = new Padding(5, 8, 8, 0);
-            flowLayoutPanel1.Size = new Size(756, 560);
+            flowLayoutPanel1.Padding = new Padding(5, 0, 8, 0);
+            flowLayoutPanel1.Size = new Size(680, 497);
             flowLayoutPanel1.TabIndex = 0;
             // 
             // tableLayoutPanel2
             // 
             tableLayoutPanel2.ColumnCount = 2;
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58.233532F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 41.766468F));
-            tableLayoutPanel2.Controls.Add(searchingBox1, 0, 0);
-            tableLayoutPanel2.Controls.Add(button1, 1, 0);
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64.38172F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35.61828F));
+            tableLayoutPanel2.Controls.Add(comboBox1, 0, 0);
+            tableLayoutPanel2.Controls.Add(flowLayoutPanel2, 1, 0);
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(3, 3);
             tableLayoutPanel2.Name = "tableLayoutPanel2";
             tableLayoutPanel2.RowCount = 1;
             tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel2.Size = new Size(750, 33);
+            tableLayoutPanel2.Size = new Size(674, 33);
             tableLayoutPanel2.TabIndex = 1;
             // 
-            // searchingBox1
+            // comboBox1
             // 
-            searchingBox1.Dock = DockStyle.Fill;
-            searchingBox1.Location = new Point(3, 3);
-            searchingBox1.Name = "searchingBox1";
-            searchingBox1.SelectedItem = null;
-            searchingBox1.Size = new Size(430, 27);
-            searchingBox1.TabIndex = 0;
+            comboBox1.AutoCompleteMode = AutoCompleteMode.Suggest;
+            comboBox1.AutoCompleteSource = AutoCompleteSource.ListItems;
+            comboBox1.Dock = DockStyle.Fill;
+            comboBox1.FormattingEnabled = true;
+            comboBox1.Location = new Point(3, 3);
+            comboBox1.Name = "comboBox1";
+            comboBox1.Size = new Size(427, 25);
+            comboBox1.TabIndex = 2;
+            // 
+            // flowLayoutPanel2
+            // 
+            flowLayoutPanel2.Controls.Add(button1);
+            flowLayoutPanel2.Controls.Add(button2);
+            flowLayoutPanel2.Dock = DockStyle.Fill;
+            flowLayoutPanel2.FlowDirection = FlowDirection.RightToLeft;
+            flowLayoutPanel2.Location = new Point(433, 0);
+            flowLayoutPanel2.Margin = new Padding(0);
+            flowLayoutPanel2.Name = "flowLayoutPanel2";
+            flowLayoutPanel2.Size = new Size(241, 33);
+            flowLayoutPanel2.TabIndex = 3;
             // 
             // button1
             // 
             button1.BackColor = SystemColors.ControlLightLight;
-            button1.Dock = DockStyle.Right;
-            button1.Location = new Point(694, 3);
-            button1.Margin = new Padding(8, 3, 3, 3);
+            button1.Location = new Point(185, 3);
             button1.Name = "button1";
-            button1.Size = new Size(53, 27);
-            button1.TabIndex = 1;
+            button1.Size = new Size(53, 25);
+            button1.TabIndex = 2;
             button1.Text = "@";
             button1.UseVisualStyleBackColor = false;
+            // 
+            // button2
+            // 
+            button2.BackColor = SystemColors.ControlLightLight;
+            button2.Location = new Point(126, 3);
+            button2.Name = "button2";
+            button2.Size = new Size(53, 25);
+            button2.TabIndex = 3;
+            button2.Text = "...";
+            button2.UseVisualStyleBackColor = false;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(981, 624);
+            ClientSize = new Size(884, 561);
             Controls.Add(splitContainer1);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
+            MinimumSize = new Size(900, 600);
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Dota2 Editor";
@@ -322,6 +350,7 @@
             contextMenuStrip1.ResumeLayout(false);
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
+            flowLayoutPanel2.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -351,14 +380,16 @@
         private TableLayoutPanel tableLayoutPanel1;
         private FlowLayoutPanel flowLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel2;
-        private Panels.SearchingBox searchingBox1;
         private ToolStripMenuItem toolStripMenuItemV6;
-        private Button button1;
         private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem toolStripMenuItem1;
         private ToolStripMenuItem toolStripMenuItem2;
         private ToolStripMenuItem toolStripMenuItem3;
         private ToolStripMenuItem toolStripMenuItem4;
         private ToolStripMenuItem toolStripMenuItemL;
+        private ComboBox comboBox1;
+        private FlowLayoutPanel flowLayoutPanel2;
+        private Button button1;
+        private Button button2;
     }
 }

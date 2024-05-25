@@ -12,7 +12,7 @@ namespace Dota2Editor
             Initialization();
         }
 
-        private static readonly string RepoUrl = "https://www.github.com";
+        private static readonly string RepoUrl = "https://github.com/ado-cs/Dota2Editor";
 
         private static readonly string Local = Path.Combine(Environment.CurrentDirectory, "data");
         private static readonly string LocalGame = Path.Combine(Local, "game");
@@ -42,6 +42,8 @@ namespace Dota2Editor
                     var conf = DSONObject.Parse(File.ReadAllText(LocalConfig));
                     var path = (conf["path"] as DSONValue)?.Text;
                     if (IsLegalGamePath(path)) _gamePath = path;
+                    var lang = (conf["lang"] as DSONValue)?.Text;
+                    if (lang != null) Globalization.CurrentLang = lang;
                 }
                 catch { }
             }
@@ -50,18 +52,19 @@ namespace Dota2Editor
             {
                 toolStripMenuItemL.DropDownItems.Add(new ToolStripMenuItem(key));
             }
-            ResetAllText(Globalization.CurrentLang);
+            ResetAllText();
             BindEvents();
         }
 
-        private void ResetAllText(string langName)
+        private void ResetAllText()
         {
             var langs = Globalization.SupportedLanguages;
+            var langName = Globalization.CurrentLang;
             foreach (ToolStripMenuItem item in toolStripMenuItemL.DropDownItems)
             {
                 item.Checked = item.Text != null && Equals(langName, langs[item.Text]);
             }
-            Globalization.CurrentLang = langName;
+            
             toolStripMenuItemG.Text = Globalization.Get("Form1.Menu.Game") + "(&G)";
             toolStripMenuItemG1.Text = Globalization.Get("Form1.Menu.Game.Write") + "(&S)";
             toolStripMenuItemG2.Text = Globalization.Get("Form1.Menu.Game.Recover") + "(&R)";
@@ -88,7 +91,7 @@ namespace Dota2Editor
 
         private void BindEvents()
         {
-            searchingBox1.SelectionHandler = ShowItem;
+            comboBox1.SelectedIndexChanged += (_, _) => ShowItem();
             toolStripMenuItemG1.Click += (_, _) => WriteToGameData();
             toolStripMenuItemG2.Click += (_, _) => RecoverGameData();
             toolStripMenuItemG3.Click += (_, _) => UpdateLocalData(false);
@@ -103,10 +106,14 @@ namespace Dota2Editor
                 item.Click += (sender, _) =>
                 {
                     if (sender is ToolStripMenuItem s && s.Text != null && !s.Checked)
-                        ResetAllText(Globalization.SupportedLanguages[s.Text]);
+                    {
+                        var lang = Globalization.SupportedLanguages[s.Text];
+                        Globalization.CurrentLang = lang;
+                        ResetAllText();
+                        TrySaveDSON(LocalConfig, "lang", lang);
+                    }
                 };
             }
-
             toolStripMenuItemG.DropDownOpening += (_, _) =>
             {
                 var flag = IsLegalGamePath(_gamePath);
@@ -128,8 +135,8 @@ namespace Dota2Editor
             contextMenuStrip1.Opening += (_, _) =>
             {
                 toolStripMenuItem1.Enabled = IsEditing;
-                toolStripMenuItem2.Enabled = toolStripMenuItem3.Enabled = listBox1.SelectedItems.Count == 1;
-                toolStripMenuItem4.Enabled = listBox1.SelectedItems.Count > 0;
+                toolStripMenuItem3.Enabled = listBox1.SelectedItems.Count == 1;
+                toolStripMenuItem2.Enabled = toolStripMenuItem4.Enabled = listBox1.SelectedItems.Count > 0;
             };
             toolStripMenuItem1.Click += (_, _) =>
             {
@@ -147,7 +154,12 @@ namespace Dota2Editor
             };
             toolStripMenuItem2.Click += (_, _) =>
             {
-                if (listBox1.SelectedItem is string item) LoadLocalRecord(item);
+                var list = new List<string>();
+                foreach (var item in listBox1.SelectedItems)
+                {
+                    if (item is string s) list.Add(s);
+                }
+                LoadLocalRecord(list);
             };
             toolStripMenuItem3.Click += (_, _) =>
             {
@@ -178,14 +190,15 @@ namespace Dota2Editor
                 DeleteLocalRecord(list);
                 foreach (var item in list) listBox1.Items.Remove(item);
             };
-            button1.Click += (_, _) => new BatchModificationForm(BatchModify).ShowDialog();
+            button1.Click += (_, _) => { new BatchModificationForm(BatchModify).ShowDialog(); ShowItem(); };
+            button2.Click += (_, _) => OpenEditingFolder();
             FormClosing += (_, _) => StashChanges();
         }
 
         private void WriteToGameData()
         {
-            StashChanges();
             if (_gamePath == null) return;
+            StashChanges();
             var outputDir = Path.Combine(_gamePath, OutputVpkDir);
             Directory.CreateDirectory(outputDir);
             var gameinfoPath = Path.Combine(_gamePath, TargetGameinfo);
@@ -265,10 +278,10 @@ namespace Dota2Editor
                             if (File.Exists(gamePath) && File.Exists(stashPath))
                             {
                                 var newObj = DSONObject.Parse(File.ReadAllText(workingFile = f));
-                                var oriObj = DSONObject.Parse(File.ReadAllText(workingFile = gamePath));
+                                var rawObj = DSONObject.Parse(File.ReadAllText(workingFile = gamePath));
                                 var modObj = DSONObject.Parse(File.ReadAllText(workingFile = stashPath));
-                                modObj.FindModifiedValues(oriObj);
-                                newObj.UpdateWithModifiedValues(modObj);
+                                var changes = modObj.FindChanges(rawObj);
+                                if (changes != null) newObj.UpdateValues(changes);
                                 File.WriteAllText(stashPath, newObj.ToString());
                             }
                             else File.Copy(f, stashPath, true);
@@ -289,7 +302,6 @@ namespace Dota2Editor
                 MessageBox.Show(Globalization.Get("Form1.SuccessInReplace"));
             if (!ReloadView(state))
             {
-                splitContainer1.Visible = false;
                 foreach (var item in toolStripMenuItemV.DropDownItems)
                 {
                     if (item is ToolStripMenuItem it) it.Checked = false;
@@ -315,25 +327,7 @@ namespace Dota2Editor
                         break;
                     }
                 }
-                if (IsLegalGamePath(path))
-                {
-                    _gamePath = path;
-                    DSONObject conf;
-                    try
-                    {
-                        conf = DSONObject.Parse(File.ReadAllText(LocalConfig));
-                        conf["path"] = new DSONValue(path);
-                    }
-                    catch
-                    {
-                        conf = new DSONObject
-                        {
-                            { "path", new DSONValue(path) }
-                        };
-                    }
-                    Directory.CreateDirectory(Local);
-                    File.WriteAllText(LocalConfig, conf.ToString());
-                }
+                if (IsLegalGamePath(path)) TrySaveDSON(LocalConfig, "path", _gamePath = path);
                 else MessageBox.Show(Globalization.Get("Form1.IllegalGamePath"));
             }
         }
@@ -347,7 +341,6 @@ namespace Dota2Editor
             var relPath = index < DataFiles.Length ? $"{NpcPath}\\{DataFiles[index]}.{Ext}" : HeroPath;
             if (ResetView(relPath, index >= DataFiles.Length))
             {
-                splitContainer1.Visible = true;
                 for (var i = 0; i < toolStripMenuItemV.DropDownItems.Count; i++)
                 {
                     if (toolStripMenuItemV.DropDownItems[i] is ToolStripMenuItem it) it.Checked = index == i;
@@ -411,14 +404,20 @@ namespace Dota2Editor
             return false;
         }
 
-        private static List<string> GetKeys(DSONObject obj)
+        private static void TrySaveDSON(string file, string key, string value)
         {
-            var keys = new List<string>();
-            foreach (var key in obj.Keys)
+            DSONObject obj;
+            try
             {
-                if (obj[key] is DSONObject) keys.Add(key);
+                obj = DSONObject.Parse(File.ReadAllText(file));
+                obj[key] = new DSONValue(value);
             }
-            return keys;
+            catch
+            {
+                obj = new DSONObject { { key, new DSONValue(value) } };
+            }
+            Directory.CreateDirectory(Local);
+            File.WriteAllText(file, obj.ToString());
         }
 
         #endregion
@@ -427,85 +426,94 @@ namespace Dota2Editor
 
         private bool _isDir;
         private string? _relPath;
-        private DSONObject? _main;
-        private DSONObject? _data;
-        private bool _changed = false;
-        private string? _currentItem;
-        private readonly HashSet<string> _modifiedItems = [];
+        private DSONObject? _root;
 
-        private bool IsEditing => _relPath != null && _main != null;
+        private bool IsEditing => _relPath != null && _root != null;
 
-        private void ShowItem(string item)
+        private void ShowItem()
         {
-            if (_data != null && _data.TryGetValue(item, out var v) && v is DSONObject o)
+            if (comboBox1.SelectedItem is string item && _root != null && _root.RootValue.TryGetValue(item, out var v) && v is DSONObject o)
             {
-                Debug.WriteLine(item);
-
-                _currentItem = item;
                 flowLayoutPanel1.SuspendLayout();
-                flowLayoutPanel1.Controls.Clear();
 
-                AddObject(o.Decomposition(), _isDir);
-                flowLayoutPanel1.Controls.Add(new Label() { Text = string.Empty, AutoSize = true, Margin = new Padding(0, 12, 0, 0) });
+                var index = 0;
+                AddObject(o.RootValue, _isDir, ref index);
 
+                var flag = true;
+                while (index < flowLayoutPanel1.Controls.Count)
+                {
+                    var control = flowLayoutPanel1.Controls[index];
+                    if (index == flowLayoutPanel1.Controls.Count - 1 && control is Label l && Equals(l.Text, string.Empty)) { l.Visible = true; flag = false; break; }
+                    control.Visible = false;
+                    index++;
+                }
+
+                if (flag)
+                {
+                    var label = new Label() { Text = string.Empty, AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
+                    flowLayoutPanel1.Controls.Add(label);
+                    flowLayoutPanel1.SetFlowBreak(label, true);
+                }
+
+                flowLayoutPanel1.Visible = true;
                 flowLayoutPanel1.ResumeLayout(false);
                 flowLayoutPanel1.PerformLayout();
             }
         }
 
-        private void AddObject(DSONObject obj, bool highlight, int indent = 3)
+        private void AddObject(DSONObject obj, bool highlight, ref int index, int indent = 3)
         {
-            var first = true;
-            List<TextBox> list = [];
-            var left = 0;
             foreach (var key in obj.Keys)
             {
-                var val = obj[key];
-                var label = new Label
+                if (highlight && "Version".Equals(key)) continue;
+
+                Label? label = null;
+                while (flowLayoutPanel1.Controls.Count > index)
                 {
-                    Margin = new Padding(indent, first ? 6 : 12, 6, 0),
-                    Text = key,
-                    AutoSize = true
-                };
-                if (highlight) label.ForeColor = Color.OrangeRed;
-                flowLayoutPanel1.Controls.Add(label);
-                if (val is DSONObject o)
-                {
-                    flowLayoutPanel1.SetFlowBreak(label, true);
-                    AddObject(o, false, indent + 40);
+                    if (flowLayoutPanel1.Controls[index] is Label l) { label = l; break; }
+                    else flowLayoutPanel1.Controls.RemoveAt(index);
                 }
+                index++;
+                if (label == null) 
+                { 
+                    flowLayoutPanel1.Controls.Add(label = new Label { AutoSize = true, Margin = new Padding(indent, 8, 0, 0) });
+                    flowLayoutPanel1.SetFlowBreak(label, true);
+                }
+
+                if (label.Margin.Left != indent) label.Margin = new Padding(indent, 8, 0, 0);
+                label.Text = key;
+                label.ForeColor = highlight ? Color.OrangeRed : Color.Black;
+                label.Visible = true;
+
+                var val = obj[key];
+                if (val is DSONObject o) AddObject(o, false, ref index, indent + 40);
                 else if (val is DSONValue v)
                 {
-                    var tb = new TextBox
+                    TextBox? tb = null;
+                    while (flowLayoutPanel1.Controls.Count > index)
                     {
-                        Margin = new Padding(0, first ? 3 : 9, 3, 3),
-                        Size = new Size(197, 23),
-                        Text = val.ToString()
-                    };
-                    tb.TextChanged += (_, _) =>
-                    {
-                        _changed = true;
-                        if (_currentItem != null) _modifiedItems.Add(_currentItem);
-                        v.Text = tb.Text ?? string.Empty;
-                    };
-                    flowLayoutPanel1.Controls.Add(tb);
-                    flowLayoutPanel1.SetFlowBreak(tb, true);
-                    list.Add(tb);
-                    if (tb.Left > left) left = tb.Left;
+                        if (flowLayoutPanel1.Controls[index] is TextBox t) { tb = t; break; }
+                        else flowLayoutPanel1.Controls.RemoveAt(index);
+                    }
+                    index++;
+                    if (tb == null) 
+                    { 
+                        flowLayoutPanel1.Controls.Add(tb = new TextBox { Size = new Size(300, 23), Margin = new Padding(indent, 0, 0, 0) });
+                        flowLayoutPanel1.SetFlowBreak(tb, true);
+                        tb.TextChanged += (sender, _) =>
+                        {
+                            if (sender is TextBox t && t.Tag is DSONValue v) v.Text = t.Text ?? string.Empty;
+                        };
+                    }
+                    if (tb.Margin.Left != indent) tb.Margin = new Padding(indent, 0, 0, 0);
+                    tb.Text = val.ToString();
+                    tb.Tag = val;
+                    tb.Visible = true;
                 }
-                first = false;
             }
-            /** Alignment
-             * 
-            foreach (var item in list)
-            {
-                var gap = left - item.Left;
-                if (gap > 0) item.Margin = new Padding(gap, 3, 3, 3);
-            }
-             */
         }
 
-        private DSONObject? GetCurrentState() => _changed ? _main?.ExtractChangedValues() : null;
+        private DSONObject? GetCurrentState() => _root?.ExtractModifiedValues;
 
         public bool ResetView(string relativePath, bool isDir)
         {
@@ -513,13 +521,10 @@ namespace Dota2Editor
             DSONObject? root = ReadData(relativePath);
             if (root == null) return false;
             _relPath = relativePath;
-            _main = root;
-            _data = root.Decomposition();
-            _currentItem = null;
-            _changed = false;
-            _modifiedItems.Clear();
-            flowLayoutPanel1.Controls.Clear();
-            searchingBox1.Items = GetKeys(_data);
+            _root = root;
+            flowLayoutPanel1.Visible = false;
+            splitContainer1.Visible = true;
+            UpdateComboBox(false);
             //load records
             var recPath = Path.Combine(LocalRecord, relativePath);
             listBox1.Items.Clear();
@@ -542,24 +547,35 @@ namespace Dota2Editor
                 DSONObject? root = ReadData(_relPath);
                 if (root != null)
                 {
-                    _main = root;
-                    if (state != null) _main.UpdateValues(state);
-                    _data = root.Decomposition();
-                    searchingBox1.Items = GetKeys(_data);
-                    if (_currentItem != null) searchingBox1.SelectedItem = _currentItem;
+                    _root = root;
+                    if (state != null) _root.UpdateValues(state);
+                    UpdateComboBox(true);
                     return true;
                 }
             }
+            splitContainer1.Visible = false;
             _relPath = null;
-            _main = null;
-            _data = null;
-            _currentItem = null;
-            _changed = false;
-            _modifiedItems.Clear();
+            _root = null;
             listBox1.Items.Clear();
-            searchingBox1.Items = [];
-            flowLayoutPanel1.Controls.Clear();
+            comboBox1.Text = string.Empty;
+            comboBox1.Items.Clear();
             return false;
+        }
+
+        private void UpdateComboBox(bool keepSelection)
+        {
+            if (_root == null) return;
+            var item = comboBox1.SelectedItem;
+            var obj = _root.RootValue;
+            comboBox1.Text = string.Empty;
+            comboBox1.Items.Clear();
+            var flag = false;
+            foreach (var key in obj.Keys)
+            {
+                if (obj[key] is DSONObject) comboBox1.Items.Add(key);
+                if (keepSelection && !flag && item != null && Equals(item, key)) flag = true;
+            }
+            if (keepSelection && flag) comboBox1.SelectedItem = item;
         }
 
         private DSONObject? ReadData(string relativePath, bool fromStash = true)
@@ -632,55 +648,54 @@ namespace Dota2Editor
             return root;
         }
 
-        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag)
+        private void OpenEditingFolder()
         {
-            if (_data == null) return 0;
-            var num = 0;
-            foreach (var k in _data.Keys)
-            {
-                if (_data[k] is DSONObject o && ModifyObject(o, key, value, val, flag, ref num)) _modifiedItems.Add(k);
-            }
-            if (num > 0) _changed = true;
-            return num;
+            if (_relPath == null) return;
+            var path = Path.Combine(LocalStash, _relPath);
+            if (_isDir && comboBox1.SelectedItem is string s) path = Path.Combine(path, $"{s}.{Ext}");
+            Process.Start(new ProcessStartInfo { UseShellExecute = true, FileName = "explorer", Arguments = $"/select,\"{path}\"" });
         }
 
-        private static bool ModifyObject(DSONObject obj, string key, string value, double val, BatchModificationForm.Operator flag, ref int num)
+        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => _root == null ? 0 : ModifyObject(_root.RootValue, key, value, val, flag);
+
+        private static int ModifyObject(DSONObject obj, string key, string value, double val, BatchModificationForm.Operator flag)
         {
-            var modified = false;
+            var num = 0;
             foreach (var pair in obj)
             {
-                if (pair.Value is DSONObject o)
-                {
-                    if (ModifyObject(o, key, value, val, flag, ref num)) modified = true;
-                }
-                else if (MatchPattern(pair.Key, key) && pair.Value is DSONValue v)
+                if (pair.Value is DSONObject o) num += ModifyObject(o, key, value, val, flag);
+                else if (pair.Value is DSONValue v && MatchPattern(pair.Key, key))
                 {
                     if (flag == BatchModificationForm.Operator.Equals) v.Text = value;
                     else
                     {
                         if (v.Text.Contains(' '))
                         {
-                            var t = true;
+                            var t = false;
                             var s = v.Text.Split(' ');
                             for (var i = 0; i < s.Length; i++)
                             {
                                 if (TryModifyValue(s[i], val, flag, out var result))
                                 {
                                     s[i] = result;
-                                    t = false;
+                                    t = true;
                                 }
                             }
-                            if (t) continue;
-                            v.Text = string.Join(' ', s);
+                            if (t)
+                            {
+                                v.Text = string.Join(' ', s);
+                                num++;
+                            }
                         }
-                        else if (TryModifyValue(v.Text, val, flag, out var result)) v.Text = result;
-                        else continue;
+                        else if (TryModifyValue(v.Text, val, flag, out var result))
+                        {
+                            v.Text = result;
+                            num++;
+                        }
                     }
-                    num++;
-                    modified = true;
                 }
             }
-            return modified;
+            return num;
         }
 
         private static bool TryModifyValue(string text, double val, BatchModificationForm.Operator flag, out string result)
@@ -719,7 +734,7 @@ namespace Dota2Editor
 
         private int AddLocalRecord(string name)
         {
-            if (_main == null || _relPath == null) return -1;
+            if (_root == null || _relPath == null) return -1;
             if (IsIllegalName(name)) return 0;
             Directory.CreateDirectory(Path.Combine(LocalRecord, _relPath));
             var path = Path.Combine(LocalRecord, _relPath, $"{name}.{Ext}");
@@ -730,7 +745,7 @@ namespace Dota2Editor
             }
             DSONObject? root = ReadData(_relPath, false);
             if (root == null) return -1;
-            var obj = _main.ExtractChangedValuesFrom(root);
+            var obj = _root.FindChanges(root);
             if (obj == null)
             {
                 MessageBox.Show(Globalization.Get("Form1.NoChanges"));
@@ -740,38 +755,35 @@ namespace Dota2Editor
             return 1;
         }
 
-        private void LoadLocalRecord(string name)
+        private void LoadLocalRecord(ICollection<string> names)
         {
-            if (_main == null || _relPath == null) return;
-            var path = Path.Combine(LocalRecord, _relPath, $"{name}.{Ext}");
-            if (!File.Exists(path))
-            {
-                MessageBox.Show(Globalization.Get("Form1.RecordMissing", name));
-                return;
-            }
-            DSONObject? root = ReadData(_relPath, false);
-            if (root == null) return;
+            if (_root == null || _relPath == null || names.Count == 0) return;
+            var list = new List<DSONObject>();
+            string path = string.Empty;
             try
             {
-                var obj = DSONObject.Parse(File.ReadAllText(path));
-                root.UpdateValues(obj);
-                _main = root;
-                _data = root.Decomposition();
-                searchingBox1.Items = GetKeys(_data);
-                if (_currentItem != null) searchingBox1.SelectedItem = _currentItem;
-                _changed = true;
-                _modifiedItems.Clear();
-                path = Path.Combine(LocalStash, _relPath);
-                if (Directory.Exists(path))
+                foreach (var name in names)
                 {
-                    foreach (var key in root.Keys) _modifiedItems.Add(key);
+                    path = Path.Combine(LocalRecord, _relPath, $"{name}.{Ext}");
+                    if (!File.Exists(path))
+                    {
+                        MessageBox.Show(Globalization.Get("Form1.RecordMissing", name));
+                        return;
+                    }
+                    list.Add(DSONObject.Parse(File.ReadAllText(path)));
                 }
-                MessageBox.Show(Globalization.Get("Form1.SuccessInLoadingRecord"));
             }
             catch (Exception e)
             {
                 MessageBox.Show(Globalization.Get("Form1.FailedInParsing", path, e.Message));
+                return;
             }
+            DSONObject? root = ReadData(_relPath, false);
+            if (root == null) return;
+            foreach (var item in list) root.UpdateValues(item);
+            _root = root;
+            UpdateComboBox(true);
+            MessageBox.Show(Globalization.Get("Form1.SuccessInLoadingRecord"));
         }
 
         private int RenameLocalRecord(string name, string newName)
@@ -809,17 +821,16 @@ namespace Dota2Editor
 
         private void StashChanges()
         {
-            if (!_changed || _relPath == null || _main == null) return;
+            if (_relPath == null || _root == null || !_root.Modified) return;
             var path = Path.Combine(LocalStash, _relPath);
             if (_isDir)
             {
-                foreach (var item in _modifiedItems)
+                foreach (var pair in _root)
                 {
-                    if (_main.TryGetValue(item, out var data) && data is DSONObject obj)
-                        File.WriteAllText(Path.Combine(path, $"{item}.{Ext}"), obj.ToString());
+                    if (pair.Value is DSONObject obj) File.WriteAllText(Path.Combine(path, $"{pair.Key}.{Ext}"), obj.ToString());
                 }
             }
-            else File.WriteAllText(path, _main.ToString());
+            else File.WriteAllText(path, _root.ToString());
         }
 
         #endregion

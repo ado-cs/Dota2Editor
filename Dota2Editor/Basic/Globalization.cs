@@ -19,8 +19,6 @@ namespace Dota2Editor.Basic
                     { "VpkParser.InvalidPath", "非法文件路径: {0}" },
                     { "DSONObject.IllegalChar", "非法字符 '{0}' 在第 {1} 行" },
                     { "DSONObject.DuplicatedKey", "重复键 '{0}' 在第 {1} 行" },
-                    { "DSONObject.IllegalPair1", "不合法的键值对在第 {0} 行" },
-                    { "DSONObject.IllegalPair2", "不合法的键值对在第 {0} 行 和第 {1} 行" },
                     { "DSONObject.IllegalColons", "不合法的冒号第 {0} 行" },
                     { "DSONObject.UnexpectedEnd", "文件结尾不合法" },
                     { "Form1.SuccessInModification", "游戏数据修改已生效" },
@@ -95,8 +93,6 @@ namespace Dota2Editor.Basic
                     { "VpkParser.InvalidPath", "The path is invalid: {0}" },
                     { "DSONObject.IllegalChar", "Illegal char '{0}' found in line {1}" },
                     { "DSONObject.DuplicatedKey", "Duplicated key '{0}' found in line {1}" },
-                    { "DSONObject.IllegalPair1", "Illegal key-value pair found in line {0}" },
-                    { "DSONObject.IllegalPair2", "Illegal key-value pair found in line {0} and line {1}" },
                     { "DSONObject.IllegalColons", "Illegal number of colons found in line {0}" },
                     { "DSONObject.UnexpectedEnd", "Unexpected end of file" },
                     { "Form1.SuccessInModification", "Changes have taken effect" },
@@ -122,8 +118,8 @@ namespace Dota2Editor.Basic
                     { "Form1.RenameRecord", "Please input the new record name:" },
                     { "Form1.SuccessInLoadingRecord", "Loading successful" },
                     { "Form1.Menu.Game", "Game" },
-                    { "Form1.Menu.Game.Write", "Write Changes" },
-                    { "Form1.Menu.Game.Recover", "Recover Game Data" },
+                    { "Form1.Menu.Game.Write", "Save Changes" },
+                    { "Form1.Menu.Game.Recover", "Recover" },
                     { "Form1.Menu.Game.Update", "Update Local Data" },
                     { "Form1.Menu.Game.Replace", "Renew Local Data" },
                     { "Form1.Menu.Game.Setting", "Set Game Path" },
@@ -167,9 +163,14 @@ namespace Dota2Editor.Basic
 
         static Globalization() 
         {
-            var name = Thread.CurrentThread.CurrentCulture.ToString();
-            if (LANG.ContainsKey(name)) _currentLang = name;
-            else _currentLang = DEFAULT_LANG;
+            var _d = new DSONObject();
+            var _o = new DSONObject();
+            _d.Add("English", _o);
+            foreach (var pair in LANG[DEFAULT_LANG])
+            {
+                _o.Add(pair.Key, new DSONValue(pair.Value));
+            }
+            File.WriteAllText(@"D:\English.txt", _d.ToString());
             var supportedLangs = new Dictionary<string, string>() { { "English", "en-US" }, { "中文", "zh-CN" } };
             var langDir = Path.Combine(Environment.CurrentDirectory, "langs");
             if (Directory.Exists(langDir))
@@ -185,10 +186,9 @@ namespace Dota2Editor.Basic
                     try { obj = DSONObject.Parse(File.ReadAllText(file)); } catch { continue; }
                     
                     var dict = new Dictionary<string, string>();
-                    foreach (var pair in obj.Decomposition())
+                    foreach (var pair in obj.RootValue)
                     {
-                        if (keys.Contains(pair.Key) && pair.Value is DSONValue v && !string.IsNullOrWhiteSpace(v.Text)) 
-                            dict.Add(pair.Key, v.Text);
+                        if (keys.Contains(pair.Key) && pair.Value is not DSONObject && !string.IsNullOrWhiteSpace(pair.Value.Text)) dict.Add(pair.Key, pair.Value.Text);
                     }
                     if (dict.Count == 0) continue;
 
@@ -201,15 +201,15 @@ namespace Dota2Editor.Basic
                 }
             }
             SupportedLanguages = supportedLangs.ToImmutableDictionary();
+            var name = Thread.CurrentThread.CurrentCulture.ToString();
+            if (LANG.ContainsKey(name)) _currentLang = name;
+            else _currentLang = DEFAULT_LANG;
         }
 
         public static string CurrentLang 
         { 
             get => _currentLang;
-            set 
-            {
-                if (LANG.ContainsKey(value)) _currentLang = value;
-            }
+            set { if (LANG.ContainsKey(value)) _currentLang = value; }
         }
 
         public static string Get(string key, params object[] args)

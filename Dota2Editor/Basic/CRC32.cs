@@ -30,15 +30,15 @@
             return ~rem;
         }
 
-        public static void Patch(byte[] data, uint targetCrc32, int length)
+        public static void Patch(byte[] data, uint targetCRC32, int patchLen)
         {
             uint rem = 0xFFFFFFFF;
-            var pos = data.Length - length;
+            var pos = data.Length - patchLen;
 
             for (var i = 0; i < pos; i++) rem = (rem >> 8) ^ CRC_TABLE[(rem ^ data[i]) & 0xFF];
-            for (var i = 0; i < length; i++) data[pos + i] = (byte)((rem >> (8 * i)) & 0xFF);
+            for (var i = 0; i < patchLen; i++) data[pos + i] = (byte)((rem >> (8 * i)) & 0xFF);
 
-            rem = ~targetCrc32;
+            rem = ~targetCRC32;
 
             for (var i = data.Length - 1; i >= pos; i--) rem = (rem << 8) ^ CRC_INVERSE[rem >> 24] ^ data[i];
             for (var i = 0; i < 4; i++) data[pos + i] = (byte)((rem >> (8 * i)) & 0xFF);

@@ -101,18 +101,16 @@ namespace Dota2Editor.Basic
                 foreach (var item in Directory.EnumerateFiles(current))
                 {
                     var meta = new FileMeta(item, folderPath);
-                    if (!tree.ContainsKey(meta.Ext))
+                    if (!tree.TryGetValue(meta.Ext, out var dict))
                     {
-                        tree.Add(meta.Ext, new Dictionary<string, List<FileMeta>>());
+                        tree.Add(meta.Ext, dict = []);
                         treeLen += meta.Ext.Length + 2;
                     }
-                    var dict = tree[meta.Ext];
-                    if (!dict.ContainsKey(meta.RelPath))
+                    if (!dict.TryGetValue(meta.RelPath, out var list))
                     {
-                        dict.Add(meta.RelPath, new List<FileMeta>());
+                        dict.Add(meta.RelPath, list = []);
                         treeLen += meta.RelPath.Length + 2;
                     }
-                    var list = dict[meta.RelPath];
                     list.Add(meta);
                     treeLen += meta.Name.Length + 19;
                 }
@@ -149,8 +147,7 @@ namespace Dota2Editor.Basic
                             var fileLen = fs.Position - fileOffset;
                             fs.Seek(metadataOffset, SeekOrigin.Begin);
                             embedChunkLen += fileLen;
-
-                            fs.WriteBytes(checksum, 0u, ARCH_INDEX, (uint)(fileOffset - treeLen - headerLen), (uint)fileLen, SUFFIX);
+                            fs.WriteBytes(checksum, (ushort)0, ARCH_INDEX, (uint)(fileOffset - treeLen - headerLen), (uint)fileLen, SUFFIX);
                         }
                         fs.WriteByte(END_OF_STRING);
                     }
@@ -160,7 +157,7 @@ namespace Dota2Editor.Basic
 
                 fs.Seek(12, SeekOrigin.Begin);
                 fs.WriteBytes((uint)embedChunkLen);
-                var chunkHash = MD5.HashData(new byte[0]);
+                var chunkHash = MD5.HashData(Array.Empty<byte>());
 
                 fs.Seek(0, SeekOrigin.Begin);
                 var headerChunk = new byte[headerLen];
