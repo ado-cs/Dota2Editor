@@ -85,8 +85,8 @@ The software supports English and Chinese interfaces. If you want to add support
 这个对话框帮助你快速修改当前视图中的多项属性。
 
 我们允许用模糊匹配来定位属性名.
-- * 匹配0个或多个字符
-- ? 匹配任意一个字符
+- "*" 匹配0个或多个字符
+- "?" 匹配任意一个字符
 
 例如, 
 
