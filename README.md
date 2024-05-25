@@ -30,10 +30,10 @@ Whenever you open this view, the previously saved changes will be displayed in t
 
 You can reapply changes to the view by right-clicking on the target item(s) in the list box and selecting the Load button.
 
-## 2 Open Local Folder
+## 2 Open Local Folder (...)
 After selecting a view and clicking this button, the software will open Explorer and highlight the file (or the directory) corresponding to that view.
 
-## 3 Batch Modification
+## 3 Batch Modification (@)
 Clicking this button will open a new dialog. 
 
 This dialog allows you to quickly modify multiple properties in this view.
@@ -47,7 +47,7 @@ For example,
 Key Pattern = "Attribute*Gain" matches: "AttributeStrengthGain", "AttributeIntelligenceGain", "AttributeAgilityGain"
 
 ## 4 Change Language
-The software supports English and Chinese interfaces. If you want to add support for other languages, you can create a UTF-8 encoded text file following the format of [English.txt](https://github.com/ado-cs/Dota2Editor/blob/main/English.txt) and save it in the <working_directory/langs>.
+The software supports English and Chinese interfaces. If you want to add support for other languages, you can create a UTF-8 encoded text file following the format of [English.txt](https://github.com/ado-cs/Dota2Editor/blob/master/English.txt) and save it in the <working_directory/langs>.
 
 <a id="cn"></a>
 # 中文文档
@@ -76,21 +76,21 @@ The software supports English and Chinese interfaces. If you want to add support
 
 你可以通过右击列表中的记录并选择加载这些记录。
 
-## 2 打开本地目录
+## 2 打开本地目录 (...)
 在选择一项视图并点击这个按钮后, 软件会用资源管理器打开并选中该视图对应的文件（或目录）。
 
-## 3 批量修改
+## 3 批量修改 (@)
 点击这个按钮会打开一个新的对话框。 
 
 这个对话框帮助你快速修改当前视图中的多项属性。
 
 我们允许用模糊匹配来定位属性名.
-- * 匹配0个或多个字符
-- ? 匹配任意一个字符
+- "*" 匹配0个或多个字符
+- "?" 匹配任意一个字符
 
 例如, 
 
 键的模式 = "Attribute*Gain" 匹配: "AttributeStrengthGain", "AttributeIntelligenceGain", "AttributeAgilityGain"
 
 ## 4 改变语言
-这个软件支持英文和中文. 如果你想要支持其他语言, 你可以参照 [English](https://github.com/ado-cs/Dota2Editor/blob/main/English.txt) 创建一个 UTF-8 编码的文本文件并将它保存在 <工作目录/langs> 。
+这个软件支持英文和中文. 如果你想要支持其他语言, 你可以参照 [English](https://github.com/ado-cs/Dota2Editor/blob/master/English.txt) 创建一个 UTF-8 编码的文本文件并将它保存在 <工作目录/langs> 。

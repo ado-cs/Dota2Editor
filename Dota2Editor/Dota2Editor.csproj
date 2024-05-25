@@ -9,7 +9,7 @@
     <AssemblyVersion>1.1.0.1</AssemblyVersion>
     <FileVersion></FileVersion>
     <Title></Title>
-    <PackageProjectUrl>https://www.github.com</PackageProjectUrl>
+    <PackageProjectUrl></PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
