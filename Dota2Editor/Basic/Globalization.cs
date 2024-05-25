@@ -163,14 +163,6 @@ namespace Dota2Editor.Basic
 
         static Globalization() 
         {
-            var _d = new DSONObject();
-            var _o = new DSONObject();
-            _d.Add("English", _o);
-            foreach (var pair in LANG[DEFAULT_LANG])
-            {
-                _o.Add(pair.Key, new DSONValue(pair.Value));
-            }
-            File.WriteAllText(@"D:\English.txt", _d.ToString());
             var supportedLangs = new Dictionary<string, string>() { { "English", "en-US" }, { "中文", "zh-CN" } };
             var langDir = Path.Combine(Environment.CurrentDirectory, "langs");
             if (Directory.Exists(langDir))

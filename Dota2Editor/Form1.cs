@@ -226,16 +226,16 @@ namespace Dota2Editor
         private void RecoverGameData()
         {
             if (_gamePath == null) return;
-            if (!File.Exists(LocalGameinfo))
-            {
-                MessageBox.Show(Globalization.Get("Form1.FailedInRecovery2"));
-                return;
-            }
             var targetPath = Path.Combine(_gamePath, TargetGameinfo);
             if (File.Exists(targetPath) && !Gameinfo.IsActive(targetPath, OutputVpkDir))
             {
                 Directory.Delete(Path.Combine(_gamePath, OutputVpkDir), true);
                 MessageBox.Show(Globalization.Get("Form1.SuccessInRecovery"));
+                return;
+            }
+            if (!File.Exists(LocalGameinfo)) //fix1
+            {
+                MessageBox.Show(Globalization.Get("Form1.FailedInRecovery2"));
                 return;
             }
             try
