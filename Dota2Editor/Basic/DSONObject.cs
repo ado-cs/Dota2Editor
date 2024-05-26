@@ -268,8 +268,10 @@ namespace Dota2Editor.Basic
                 if (val is DSONObject item)
                 {
                     sb.AppendLine();
+                    for (var i = 0; i < indent; i++) sb.Append('\t');
                     sb.AppendLine("{");
                     AppendString(item, sb, indent + 1);
+                    for (var i = 0; i < indent; i++) sb.Append('\t');
                     sb.AppendLine("}");
                 }
                 else
