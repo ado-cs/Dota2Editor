@@ -193,9 +193,9 @@ namespace Dota2Editor.Basic
 
         public string? RootKey => _orderedKeys.Count == 1 ? _orderedKeys[0] : null;
 
-        public DSONObject RootValue => _orderedKeys.Count == 1 && _keyValues[_orderedKeys[0]] is DSONObject o ? o.RootValue : this;
+        public DSONObject ExpandedObject => _orderedKeys.Count == 1 && _keyValues[_orderedKeys[0]] is DSONObject o ? o.ExpandedObject : this;
 
-        public DSONObject? ExtractModifiedValues
+        public DSONObject? ModifiedValues
         {
             get
             {
@@ -206,7 +206,7 @@ namespace Dota2Editor.Basic
                     var val = pair.Value;
                     if (!val.Modified) continue;
                     IDSONItem? item = null;
-                    if (val is DSONObject a) item = a.ExtractModifiedValues;
+                    if (val is DSONObject a) item = a.ModifiedValues;
                     else if (val is DSONValue) item = val;
                     if (item != null) clone.Add(pair.Key, item);
                 }

@@ -9,7 +9,21 @@ namespace Dota2Editor.Basic
         private static readonly string SEARCH_PATH = "\t\t\tGame\t\t\t\t";
         private static readonly int PATCH_LEN = 4;
 
-        public static bool IsActive(string path, string folderName) => ENCODING.GetString(File.ReadAllBytes(path)).Contains(SEARCH_PATH + folderName);
+        public static bool IsActive(string path, string folderName)
+        {
+            var flag = 0;
+            foreach (var line in File.ReadAllLines(path, ENCODING))
+            {
+                if (flag == 0 && line.Contains(SEARCH_BLOCK)) flag = 1;
+                else if(flag == 1 && line.Contains('{')) flag = 2;
+                else if(flag == 2)
+                {
+                    if (line.Contains('}')) return false;
+                    if (line.Contains(folderName)) return true;
+                }
+            }
+            return false;
+        }
 
         public static bool Activate(string path, out byte[] data, string folderName)
         {

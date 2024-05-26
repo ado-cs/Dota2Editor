@@ -92,8 +92,8 @@ namespace Dota2Editor
         private void BindEvents()
         {
             comboBox1.SelectedIndexChanged += (_, _) => ShowItem();
-            toolStripMenuItemG1.Click += (_, _) => WriteToGameData();
-            toolStripMenuItemG2.Click += (_, _) => RecoverGameData();
+            toolStripMenuItemG1.Click += (_, _) => GamePatch();
+            toolStripMenuItemG2.Click += (_, _) => GameRecover();
             toolStripMenuItemG3.Click += (_, _) => UpdateLocalData(false);
             toolStripMenuItemG4.Click += (_, _) => UpdateLocalData(true);
             toolStripMenuItemG5.Click += (_, _) => FindGamePath();
@@ -138,55 +138,15 @@ namespace Dota2Editor
                 toolStripMenuItem3.Enabled = listBox1.SelectedItems.Count == 1;
                 toolStripMenuItem2.Enabled = toolStripMenuItem4.Enabled = listBox1.SelectedItems.Count > 0;
             };
-            toolStripMenuItem1.Click += (_, _) =>
-            {
-                while (true)
-                {
-                    var diag = new InputForm(Text, Globalization.Get("Form1.NewRecord"), string.Empty);
-                    if (diag.ShowDialog() == DialogResult.OK)
-                    {
-                        var f = AddLocalRecord(diag.Result);
-                        if (f == 0) continue;
-                        if (f == 1) listBox1.Items.Add(diag.Result);
-                    }
-                    return;
-                }
-            };
-            toolStripMenuItem2.Click += (_, _) =>
-            {
-                var list = new List<string>();
-                foreach (var item in listBox1.SelectedItems)
-                {
-                    if (item is string s) list.Add(s);
-                }
-                LoadLocalRecord(list);
-            };
+            toolStripMenuItem1.Click += (_, _) => OpenInputDialog("Form1.NewRecord", string.Empty, AddLocalRecord, s => listBox1.Items.Add(s));
+            toolStripMenuItem2.Click += (_, _) => LoadLocalRecord(GetSelectedItems());
             toolStripMenuItem3.Click += (_, _) =>
             {
-                if (listBox1.SelectedItem is string item)
-                {
-                    var index = listBox1.SelectedIndex;
-                    while (true)
-                    {
-                        var diag = new InputForm(Text, Globalization.Get("Form1.RenameRecord"), item);
-                        if (diag.ShowDialog() == DialogResult.OK)
-                        {
-                            var f = RenameLocalRecord(item, diag.Result);
-                            if (f == 0) continue;
-                            if (f == 1) listBox1.Items[index] = diag.Result;
-                        }
-                        return;
-                    }
-                }
-                
+                if (listBox1.SelectedItem is string item) OpenInputDialog("Form1.RenameRecord", item, s => RenameLocalRecord(item, s), s => listBox1.Items[listBox1.SelectedIndex] = s);
             };
             toolStripMenuItem4.Click += (_, _) =>
             {
-                var list = new List<string>();
-                foreach (var item in listBox1.SelectedItems)
-                {
-                    if (item is string s) list.Add(s);
-                }
+                var list = GetSelectedItems();
                 DeleteLocalRecord(list);
                 foreach (var item in list) listBox1.Items.Remove(item);
             };
@@ -195,7 +155,32 @@ namespace Dota2Editor
             FormClosing += (_, _) => StashChanges();
         }
 
-        private void WriteToGameData()
+        private void OpenInputDialog(string textKey, string value, Func<string, int> handler, Action<string> consumer)
+        {
+            while (true)
+            {
+                var diag = new InputForm(Text, Globalization.Get(textKey), value);
+                if (diag.ShowDialog() == DialogResult.OK)
+                {
+                    var f = handler(diag.Result);
+                    if (f == 0) continue;
+                    if (f == 1) consumer(diag.Result);
+                }
+                return;
+            }
+        }
+
+        private List<string> GetSelectedItems()
+        {
+            var list = new List<string>();
+            foreach (var item in listBox1.SelectedItems)
+            {
+                if (item is string s) list.Add(s);
+            }
+            return list;
+        }
+
+        private void GamePatch()
         {
             if (_gamePath == null) return;
             StashChanges();
@@ -223,24 +208,24 @@ namespace Dota2Editor
             }
         }
 
-        private void RecoverGameData()
+        private void GameRecover()
         {
             if (_gamePath == null) return;
-            var targetPath = Path.Combine(_gamePath, TargetGameinfo);
-            if (File.Exists(targetPath) && !Gameinfo.IsActive(targetPath, OutputVpkDir))
-            {
-                Directory.Delete(Path.Combine(_gamePath, OutputVpkDir), true);
-                MessageBox.Show(Globalization.Get("Form1.SuccessInRecovery"));
-                return;
-            }
-            if (!File.Exists(LocalGameinfo)) //fix1
-            {
-                MessageBox.Show(Globalization.Get("Form1.FailedInRecovery2"));
-                return;
-            }
             try
             {
-                File.Move(LocalGameinfo, targetPath, true);
+                var gameinfoPath = Path.Combine(_gamePath, TargetGameinfo);
+                if (File.Exists(gameinfoPath) && !Gameinfo.IsActive(gameinfoPath, OutputVpkDir))
+                {
+                    Directory.Delete(Path.Combine(_gamePath, OutputVpkDir), true);
+                    MessageBox.Show(Globalization.Get("Form1.SuccessInRecovery"));
+                    return;
+                }
+                if (!File.Exists(LocalGameinfo))
+                {
+                    MessageBox.Show(Globalization.Get("Form1.FailedInRecovery2"));
+                    return;
+                }
+                File.Copy(LocalGameinfo, gameinfoPath, true);
                 Directory.Delete(Path.Combine(_gamePath, OutputVpkDir), true);
                 MessageBox.Show(Globalization.Get("Form1.SuccessInRecovery"));
             }
@@ -432,12 +417,12 @@ namespace Dota2Editor
 
         private void ShowItem()
         {
-            if (comboBox1.SelectedItem is string item && _root != null && _root.RootValue.TryGetValue(item, out var v) && v is DSONObject o)
+            if (comboBox1.SelectedItem is string item && _root != null && _root.ExpandedObject.TryGetValue(item, out var v) && v is DSONObject o)
             {
                 flowLayoutPanel1.SuspendLayout();
 
                 var index = 0;
-                AddObject(o.RootValue, _isDir, ref index);
+                AddObject(o.ExpandedObject, _isDir, ref index);
 
                 var flag = true;
                 while (index < flowLayoutPanel1.Controls.Count)
@@ -513,7 +498,7 @@ namespace Dota2Editor
             }
         }
 
-        private DSONObject? GetCurrentState() => _root?.ExtractModifiedValues;
+        private DSONObject? GetCurrentState() => _root?.ModifiedValues;
 
         public bool ResetView(string relativePath, bool isDir)
         {
@@ -566,7 +551,7 @@ namespace Dota2Editor
         {
             if (_root == null) return;
             var item = comboBox1.SelectedItem;
-            var obj = _root.RootValue;
+            var obj = _root.ExpandedObject;
             comboBox1.Text = string.Empty;
             comboBox1.Items.Clear();
             var flag = false;
@@ -656,7 +641,7 @@ namespace Dota2Editor
             Process.Start(new ProcessStartInfo { UseShellExecute = true, FileName = "explorer", Arguments = $"/select,\"{path}\"" });
         }
 
-        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => _root == null ? 0 : ModifyObject(_root.RootValue, key, value, val, flag);
+        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => _root == null ? 0 : ModifyObject(_root.ExpandedObject, key, value, val, flag);
 
         private static int ModifyObject(DSONObject obj, string key, string value, double val, BatchModificationForm.Operator flag)
         {

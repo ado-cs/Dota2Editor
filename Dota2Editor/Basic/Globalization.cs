@@ -178,7 +178,7 @@ namespace Dota2Editor.Basic
                     try { obj = DSONObject.Parse(File.ReadAllText(file)); } catch { continue; }
                     
                     var dict = new Dictionary<string, string>();
-                    foreach (var pair in obj.RootValue)
+                    foreach (var pair in obj.ExpandedObject)
                     {
                         if (keys.Contains(pair.Key) && pair.Value is not DSONObject && !string.IsNullOrWhiteSpace(pair.Value.Text)) dict.Add(pair.Key, pair.Value.Text);
                     }
