@@ -6,9 +6,9 @@ namespace Dota2Editor.Basic
 {
     public class DSONObject(IDSONItem? parent) : IDSONItem(parent), IEnumerable<KeyValuePair<string, IDSONItem>>
     {
-        public static DSONObject Parse(string text)
+        public static DSONObject Parse(string text, IDSONItem? parent = null)
         {
-            var root = new DSONObject();
+            var root = new DSONObject(parent);
             if (string.IsNullOrWhiteSpace(text)) return root;
             var lineNum = 1;
             var sb = new StringBuilder();
@@ -212,6 +212,50 @@ namespace Dota2Editor.Basic
                 }
                 return clone;
             }
+        }
+
+        public TreeNode Tree
+        {
+            get
+            {
+                var tree = new TreeNode();
+                foreach (var pair in this)
+                {
+                    if (pair.Value is DSONObject a)
+                    {
+                        var node = a.Tree;
+                        node.Text = pair.Key;
+                        tree.Nodes.Add(node);
+                    }
+                    else if (pair.Value is DSONValue b) tree.Nodes.Add($"{pair.Key}: {b.Text}");
+                }
+                return tree;
+            }
+        }
+
+        public TreeNode? BuildTreeByChanges(DSONObject rawObj)
+        {
+            TreeNode? tree = null;
+            foreach (var pair in this)
+            {
+                if (rawObj.TryGetValue(pair.Key, out var v2))
+                {
+                    var v1 = pair.Value;
+                    TreeNode? item = null;
+                    if (v1 is DSONObject a1 && v2 is DSONObject a2)
+                    {
+                        item = a1.BuildTreeByChanges(a2);
+                        if (item != null) item.Text = pair.Key;
+                    }
+                    else if (v1 is DSONValue && v2 is DSONValue && !Equals(v1.Text, v2.Text)) item = new TreeNode($"{pair.Key}: {v2.Text} -> {v1.Text}");
+                    if (item != null)
+                    {
+                        tree ??= new TreeNode();
+                        tree.Nodes.Add(item);
+                    }
+                }
+            }
+            return tree;
         }
 
         public void UpdateValues(DSONObject newObj)

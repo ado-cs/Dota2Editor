@@ -121,6 +121,13 @@ namespace Dota2Editor
         {
             if (Common.GameRoot == null) return;
             StashChanges();
+            var tree = Common.GetAllChanges();
+            if (tree == null)
+            {
+                MessageBox.Show(Globalization.Get("Form1.NoChanges"));
+                return;
+            }
+            if (new ChangesCheckingForm(tree).ShowDialog() != DialogResult.OK) return;
             var outputDir = Path.Combine(Common.GameRoot, Common.OutputVpkDir);
             Directory.CreateDirectory(outputDir);
             var gameinfoPath = Path.Combine(Common.GameRoot, Common.TargetGameinfo);
@@ -222,7 +229,7 @@ namespace Dota2Editor
             }
             else if (Common.ReadGameData(Common.LocalGame) && Common.ReadGameData(Common.LocalStash)) 
                 MessageBox.Show(Globalization.Get("Form1.SuccessInReplace"));
-            if (!editorPanel1.ReloadView())
+            if (!editorPanel1.ReloadView(!replace))
             {
                 foreach (var item in toolStripMenuItemV.DropDownItems)
                 {
@@ -231,7 +238,7 @@ namespace Dota2Editor
             }
             foreach (var v in EditorForms.Values)
             {
-                if (v is EditorForm form && !form.IsDisposed) form.Panel.ReloadView();
+                if (v is EditorForm form && !form.IsDisposed) form.Panel.ReloadView(!replace);
             }
         }
 

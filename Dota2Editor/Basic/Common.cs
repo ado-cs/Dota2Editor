@@ -1,4 +1,4 @@
-﻿using System.Data;
+﻿using System.Diagnostics;
 
 namespace Dota2Editor.Basic
 {
@@ -33,18 +33,113 @@ namespace Dota2Editor.Basic
             }
         }
 
+        public static bool IsFolder(int index)
+        {
+            if (index < 0 || index >= Views.Length) return false;
+            return !Views[index].IsFile;
+        }
+
+        public static TreeNode? GetAllChanges()
+        {
+            TreeNode? tree = null;
+            for (var i = 0; i < Views.Length; i++)
+            {
+                var game = ReadData(i, false);
+                var stash = ReadData(i, true);
+                if (game == null || stash == null) continue;
+                var node = stash.BuildTreeByChanges(game);
+                if (node == null) continue;
+                tree ??= new TreeNode();
+                node.Text = Globalization.Get("Form1.Menu.View." + Views[i].Name);
+                tree.Nodes.Add(node);
+            }
+            return tree;
+        }
+
         public static string GetViewName(int index)
         {
             if (index < 0 || index >= Views.Length) return string.Empty;
             return Globalization.Get("Form1.Menu.View." + Views[index].Name);
         }
 
-        public static bool GetRelativePath(int index, out string relPath)
+        public static string GetRecordPath(int index)
         {
-            var view = Views[index]; //won't check if index is out of bound
-            relPath = $"{PathNPC}\\{view.Filename}";
-            if (view.IsFile) relPath += $".{Ext}";
-            return view.IsFile;
+            if (index < 0 || index >= Views.Length) return LocalRecord;
+            return Path.Combine(LocalRecord, Views[index].Filename);
+        }
+
+        public static DSONObject? ReadData(int index, bool fromStash = true)
+        {
+            if (index < 0 || index >= Views.Length) return null;
+            var view = Views[index];
+            var relPath = $"{PathNPC}\\{view.Filename}";
+            return view.IsFile ? ReadFromFile(relPath + $".{Ext}", fromStash) : ReadFromFolder(relPath, fromStash);
+        }
+
+        private static DSONObject? ReadFromFile(string relativePath, bool fromStash)
+        {
+            var path = Path.Combine(fromStash ? LocalStash : LocalGame, relativePath);
+            if (!File.Exists(path))
+            {
+                if (!ReadGameData(LocalGame)) return null;
+                var tmpPath = Path.Combine(LocalGame, relativePath);
+                if (!File.Exists(tmpPath))
+                {
+                    MessageBox.Show(Globalization.Get("Form1.FileMissing", tmpPath));
+                    return null;
+                }
+                if (fromStash)
+                {
+                    CreateDirectory(path);
+                    File.Copy(tmpPath, path);
+                }
+            }
+            try
+            {
+                return DSONObject.Parse(File.ReadAllText(path));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(Globalization.Get("Form1.FailedInParsing", path, e.Message));
+                return null;
+            }
+        }
+
+        private static DSONObject? ReadFromFolder(string relativePath, bool fromStash)
+        {
+            var path = Path.Combine(fromStash ? LocalStash : LocalGame, relativePath);
+            if (!Directory.Exists(path))
+            {
+                if (!ReadGameData(LocalGame)) return null;
+                var tmpPath = Path.Combine(LocalGame, relativePath);
+                if (!Directory.Exists(tmpPath))
+                {
+                    MessageBox.Show(Globalization.Get("Form1.DirectoryMissing", tmpPath));
+                    return null;
+                }
+                if (fromStash)
+                {
+                    Directory.CreateDirectory(path);
+                    foreach (var file in Directory.GetFiles(tmpPath))
+                        File.Copy(file, Path.Combine(path, Path.GetFileName(file)));
+                }
+            }
+            var root = new DSONObject();
+            foreach (var file in Directory.GetFiles(path))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                try
+                {
+                    var data = DSONObject.Parse(File.ReadAllText(file), root);
+                    root.Add(name, data);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(Globalization.Get("Form1.FailedInParsing", file, e.Message));
+                    return null;
+                }
+            }
+            return root;
         }
 
         public static bool ReadGameData(string saveDir)
@@ -87,6 +182,31 @@ namespace Dota2Editor.Basic
         {
             var dir = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        }
+
+        public static void OpenInExplorer(int index, string? key)
+        {
+            if (index < 0 || index >= Views.Length) return;
+            var view = Views[index];
+            var path = Path.Combine(LocalStash, $"{PathNPC}\\{view.Filename}");
+            if (view.IsFile) path += $".{Ext}";
+            else if (key != null) path += $"\\{key}.{Ext}";
+            Process.Start(new ProcessStartInfo { UseShellExecute = true, FileName = "explorer", Arguments = $"/select,\"{path}\"" });
+        }
+
+        public static void Save(int index, DSONObject root)
+        {
+            if (index < 0 || index >= Views.Length) return;
+            var view = Views[index];
+            var relPath = $"{PathNPC}\\{view.Filename}";
+            if (view.IsFile) File.WriteAllText(Path.Combine(LocalStash, relPath + $".{Ext}"), root.ToString());
+            else
+            {
+                foreach (var pair in root)
+                {
+                    if (pair.Value is DSONObject obj) File.WriteAllText(Path.Combine(LocalStash, $"{relPath}\\{pair.Key}.{Ext}"), obj.ToString());
+                }
+            }
         }
 
         private readonly struct View(string name, string filename, bool isFile)

@@ -1,5 +1,7 @@
 ﻿using Dota2Editor.Basic;
 using Dota2Editor.Properties;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Dota2Editor.Forms
@@ -10,11 +12,11 @@ namespace Dota2Editor.Forms
         {
             InitializeComponent();
             BindEvents();
+            ResetAllText();
         }
 
         private bool _textMode;
-        private bool _isFile;
-        private string? _relPath;
+        private int _index = -1;
         private DSONObject? _root;
         private DSONObject? _current;
         private Action? _newEditorFormCreator;
@@ -27,6 +29,7 @@ namespace Dota2Editor.Forms
             toolStripMenuItem2.Text = Globalization.Get("EditorPanel.ListBox.Load") + "(&L)";
             toolStripMenuItem3.Text = Globalization.Get("EditorPanel.ListBox.Rename") + "(&R)";
             toolStripMenuItem4.Text = Globalization.Get("EditorPanel.ListBox.Delete") + "(&D)";
+            toolStripMenuItem5.Text = Globalization.Get("EditorPanel.ListBox.Detail") + "(&S)";
             toolTip1.SetToolTip(pictureBox4, Globalization.Get("EditorPanel.Tip.New"));
             toolTip1.SetToolTip(pictureBox3, Globalization.Get("EditorPanel.Tip." + (_textMode ? "KeyMode" : "TextMode")));
             toolTip1.SetToolTip(pictureBox2, Globalization.Get("EditorPanel.Tip.Open"));
@@ -38,8 +41,8 @@ namespace Dota2Editor.Forms
             comboBox1.SelectedIndexChanged += (_, _) => ShowItem(true);
             contextMenuStrip1.Opening += (_, _) =>
             {
-                toolStripMenuItem1.Enabled = _relPath != null && _root != null;
-                toolStripMenuItem3.Enabled = listBox1.SelectedItems.Count == 1;
+                toolStripMenuItem1.Enabled = _root != null;
+                toolStripMenuItem3.Enabled = toolStripMenuItem5.Enabled = listBox1.SelectedItems.Count == 1;
                 toolStripMenuItem2.Enabled = toolStripMenuItem4.Enabled = listBox1.SelectedItems.Count > 0;
             };
             toolStripMenuItem1.Click += (_, _) => OpenInputDialog("Form1.NewRecord", string.Empty, AddLocalRecord, s => listBox1.Items.Add(s));
@@ -53,6 +56,10 @@ namespace Dota2Editor.Forms
                 var list = GetSelectedItems();
                 DeleteLocalRecord(list);
                 foreach (var item in list) listBox1.Items.Remove(item);
+            };
+            toolStripMenuItem5.Click += (_, _) =>
+            {
+                if (listBox1.SelectedItem is string item) ShowRecordDetails(item);
             };
             pictureBox1.Click += (_, _) =>
             {
@@ -98,7 +105,7 @@ namespace Dota2Editor.Forms
                 if (tableLayoutPanel1.Controls.Contains(flowLayoutPanel1)) tableLayoutPanel1.Controls.Remove(flowLayoutPanel1);
                 tableLayoutPanel1.Controls.Add(textBox1, 0, 1);
                 pictureBox3.Image = Resources.t;
-                //toolTip1.SetToolTip(pictureBox3, Globalization.Get("EditorPanel.ListBox.Tip.KeyMode"));
+                toolTip1.SetToolTip(pictureBox3, Globalization.Get("EditorPanel.Tip.KeyMode"));
             }
             else
             {
@@ -106,7 +113,7 @@ namespace Dota2Editor.Forms
                 if (tableLayoutPanel1.Controls.Contains(textBox1)) tableLayoutPanel1.Controls.Remove(textBox1);
                 tableLayoutPanel1.Controls.Add(flowLayoutPanel1, 0, 1);
                 pictureBox3.Image = Resources.k;
-                //toolTip1.SetToolTip(pictureBox3, Globalization.Get("EditorPanel.ListBox.Tip.TextMode"));
+                toolTip1.SetToolTip(pictureBox3, Globalization.Get("EditorPanel.Tip.TextMode"));
             }
             ShowItem(false);
         }
@@ -137,7 +144,7 @@ namespace Dota2Editor.Forms
                 flowLayoutPanel1.SuspendLayout();
 
                 var index = 0;
-                AddObject(o.ExpandedObject, !_isFile, ref index);
+                AddObject(o.ExpandedObject, Common.IsFolder(_index), ref index);
 
                 var flag = true;
                 while (index < flowLayoutPanel1.Controls.Count)
@@ -207,6 +214,7 @@ namespace Dota2Editor.Forms
                         };
                     }
                     if (tb.Margin.Left != indent) tb.Margin = new Padding(indent, 0, 0, 0);
+                    tb.Tag = null;
                     tb.Text = val.ToString();
                     tb.Tag = val;
                     tb.Visible = true;
@@ -216,10 +224,9 @@ namespace Dota2Editor.Forms
 
         public bool ResetView(int index)
         {
-            _isFile = Common.GetRelativePath(index, out var relativePath);
-            DSONObject? root = ReadData(relativePath);
+            DSONObject? root = Common.ReadData(index);
             if (root == null) return false;
-            _relPath = relativePath;
+            _index = index;
             _root = root;
             _current = null;
             flowLayoutPanel1.Visible = false;
@@ -228,7 +235,7 @@ namespace Dota2Editor.Forms
             splitContainer1.Visible = true;
             UpdateComboBox(false);
             //load records
-            var recPath = Path.Combine(Common.LocalRecord, relativePath);
+            var recPath = Common.GetRecordPath(index);
             listBox1.Items.Clear();
             if (Directory.Exists(recPath))
             {
@@ -242,19 +249,19 @@ namespace Dota2Editor.Forms
             return true;
         }
 
-        public bool ReloadView()
+        public bool ReloadView(bool keepChanges)
         {
-            if (_relPath != null)
+            DSONObject? root = Common.ReadData(_index);
+            if (root != null)
             {
-                DSONObject? root = ReadData(_relPath);
-                if (root != null)
+                if (keepChanges)
                 {
                     var state = _root?.ModifiedValues;
-                    _root = root;
-                    if (state != null) _root.UpdateValues(state);
-                    UpdateComboBox(true);
-                    return true;
+                    if (state != null) root.UpdateValues(state);
                 }
+                _root = root;
+                UpdateComboBox(true);
+                return true;
             }
             ClearView();
             return false;
@@ -265,7 +272,7 @@ namespace Dota2Editor.Forms
             splitContainer1.Visible = false;
             textBox1.ReadOnly = true;
             textBox1.Text = string.Empty;
-            _relPath = null;
+            _index = -1;
             _root = null;
             _current = null;
             listBox1.Items.Clear();
@@ -289,83 +296,7 @@ namespace Dota2Editor.Forms
             if (keepSelection && flag) comboBox1.SelectedItem = item;
         }
 
-        private DSONObject? ReadData(string relativePath, bool fromStash = true)
-        {
-            var path = Path.Combine(fromStash ? Common.LocalStash : Common.LocalGame, relativePath);
-            return _isFile ? ReadFromFile(path, relativePath, fromStash) : ReadFromFolder(path, relativePath, fromStash);
-        }
-
-        private static DSONObject? ReadFromFile(string path, string relativePath, bool fromStash)
-        {
-            if (!File.Exists(path))
-            {
-                if (!Common.ReadGameData(Common.LocalGame)) return null;
-                var tmpPath = Path.Combine(Common.LocalGame, relativePath);
-                if (!File.Exists(tmpPath))
-                {
-                    MessageBox.Show(Globalization.Get("Form1.FileMissing", tmpPath));
-                    return null;
-                }
-                if (fromStash)
-                {
-                    Common.CreateDirectory(path);
-                    File.Copy(tmpPath, path);
-                }
-            }
-            try
-            {
-                return DSONObject.Parse(File.ReadAllText(path));
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(Globalization.Get("Form1.FailedInParsing", path, e.Message));
-                return null;
-            }
-        }
-
-        private static DSONObject? ReadFromFolder(string path, string relativePath, bool fromStash)
-        {
-            if (!Directory.Exists(path))
-            {
-                if (!Common.ReadGameData(Common.LocalGame)) return null;
-                var tmpPath = Path.Combine(Common.LocalGame, relativePath);
-                if (!Directory.Exists(tmpPath))
-                {
-                    MessageBox.Show(Globalization.Get("Form1.DirectoryMissing", tmpPath));
-                    return null;
-                }
-                if (fromStash)
-                {
-                    Directory.CreateDirectory(path);
-                    foreach (var file in Directory.GetFiles(tmpPath))
-                        File.Copy(file, Path.Combine(path, Path.GetFileName(file)));
-                }
-            }
-            var root = new DSONObject();
-            foreach (var file in Directory.GetFiles(path))
-            {
-                var name = Path.GetFileNameWithoutExtension(file);
-                try
-                {
-                    var data = DSONObject.Parse(File.ReadAllText(file));
-                    root.Add(name, data);
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show(Globalization.Get("Form1.FailedInParsing", file, e.Message));
-                    return null;
-                }
-            }
-            return root;
-        }
-
-        private void OpenEditingFolder()
-        {
-            if (_relPath == null) return;
-            var path = Path.Combine(Common.LocalStash, _relPath);
-            if (!_isFile && comboBox1.SelectedItem is string s) path = Path.Combine(path, $"{s}.{Common.Ext}");
-            Process.Start(new ProcessStartInfo { UseShellExecute = true, FileName = "explorer", Arguments = $"/select,\"{path}\"" });
-        }
+        private void OpenEditingFolder() => Common.OpenInExplorer(_index, comboBox1.SelectedItem as string);
 
         private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => _root == null ? 0 : ModifyObject(_root.ExpandedObject, key, value, val, flag);
 
@@ -445,16 +376,17 @@ namespace Dota2Editor.Forms
 
         private int AddLocalRecord(string name)
         {
-            if (_root == null || _relPath == null) return -1;
+            if (_root == null) return -1;
             if (IsIllegalName(name)) return 0;
-            Directory.CreateDirectory(Path.Combine(Common.LocalRecord, _relPath));
-            var path = Path.Combine(Common.LocalRecord, _relPath, $"{name}.{Common.Ext}");
+            var dir = Common.GetRecordPath(_index);
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, $"{name}.{Common.Ext}");
             if (File.Exists(path))
             {
                 MessageBox.Show(Globalization.Get("Form1.DeplicatedRecord", name));
                 return 0;
             }
-            DSONObject? root = ReadData(_relPath, false);
+            DSONObject? root = Common.ReadData(_index, false);
             if (root == null) return -1;
             var obj = _root.FindChanges(root);
             if (obj == null)
@@ -462,20 +394,23 @@ namespace Dota2Editor.Forms
                 MessageBox.Show(Globalization.Get("Form1.NoChanges"));
                 return -1;
             }
+            var tree = _root.BuildTreeByChanges(root);
+            if (tree != null && new ChangesCheckingForm(tree).ShowDialog() != DialogResult.OK) return -1;
             File.WriteAllText(path, obj.ToString());
             return 1;
         }
 
         private void LoadLocalRecord(ICollection<string> names)
         {
-            if (_root == null || _relPath == null || names.Count == 0) return;
+            if (_root == null || names.Count == 0) return;
             var list = new List<DSONObject>();
-            string path = string.Empty;
+            var path = string.Empty;
+            var dir = Common.GetRecordPath(_index);
             try
             {
                 foreach (var name in names)
                 {
-                    path = Path.Combine(Common.LocalRecord, _relPath, $"{name}.{Common.Ext}");
+                    path = Path.Combine(dir, $"{name}.{Common.Ext}");
                     if (!File.Exists(path))
                     {
                         MessageBox.Show(Globalization.Get("Form1.RecordMissing", name));
@@ -489,7 +424,7 @@ namespace Dota2Editor.Forms
                 MessageBox.Show(Globalization.Get("Form1.FailedInParsing", path, e.Message));
                 return;
             }
-            DSONObject? root = ReadData(_relPath, false);
+            DSONObject? root = Common.ReadData(_index, false);
             if (root == null) return;
             foreach (var item in list) root.UpdateValues(item);
             _root = root;
@@ -499,16 +434,18 @@ namespace Dota2Editor.Forms
 
         private int RenameLocalRecord(string name, string newName)
         {
-            if (_relPath == null || string.IsNullOrEmpty(name)) return -1;
+            if (_index == -1 || string.IsNullOrEmpty(name)) return -1;
             if (IsIllegalName(name)) return 0;
             if (Equals(name, newName)) return 1;
-            var path = Path.Combine(Common.LocalRecord, _relPath, $"{name}.{Common.Ext}");
+            var dir = Common.GetRecordPath(_index);
+
+            var path = Path.Combine(dir, $"{name}.{Common.Ext}");
             if (!File.Exists(path))
             {
                 MessageBox.Show(Globalization.Get("Form1.RecordMissing", name));
                 return -1;
             }
-            var newPath = Path.Combine(Common.LocalRecord, _relPath, $"{newName}.{Common.Ext}");
+            var newPath = Path.Combine(dir, $"{newName}.{Common.Ext}");
             if (File.Exists(newPath))
             {
                 MessageBox.Show(Globalization.Get("Form1.DeplicatedRecord", newName));
@@ -520,29 +457,52 @@ namespace Dota2Editor.Forms
 
         private void DeleteLocalRecord(ICollection<string> names)
         {
-            if (_relPath == null) return;
-            var recPath = Path.Combine(Common.LocalRecord, _relPath);
+            if (_index == -1) return;
+            var dir = Common.GetRecordPath(_index);
             foreach (var name in names)
             {
                 if (string.IsNullOrEmpty(name)) continue;
-                var path = Path.Combine(recPath, $"{name}.{Common.Ext}");
+                var path = Path.Combine(dir, $"{name}.{Common.Ext}");
                 if (File.Exists(path)) File.Delete(path);
             }
         }
 
+        private void ShowRecordDetails(string name)
+        {
+            if (_index == -1 || string.IsNullOrEmpty(name)) return;
+
+            var path = Path.Combine(Common.GetRecordPath(_index), $"{name}.{Common.Ext}");
+            if (!File.Exists(path))
+            {
+                MessageBox.Show(Globalization.Get("Form1.RecordMissing", name));
+                return;
+            }
+            DSONObject rec;
+            try
+            {
+                rec = DSONObject.Parse(File.ReadAllText(path));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(Globalization.Get("Form1.FailedInParsing", path, e.Message));
+                return;
+            }
+            DSONObject? root = Common.ReadData(_index, false);
+            if (root == null) return;
+            var tree = rec.BuildTreeByChanges(root);
+            if (tree == null)
+            {
+                MessageBox.Show(Globalization.Get("Form1.NoChanges"));
+                return;
+            }
+            new ChangesCheckingForm(tree).ShowDialog();
+        }
+
         public void StashChanges()
         {
-            if (_relPath == null || _root == null || !_root.Modified) return;
+            if (_root == null || !_root.Modified) return;
             if (_textMode) UpdateRootByText();
-            var path = Path.Combine(Common.LocalStash, _relPath);
-            if (_isFile) File.WriteAllText(path, _root.ToString());
-            else
-            {
-                foreach (var pair in _root)
-                {
-                    if (pair.Value is DSONObject obj) File.WriteAllText(Path.Combine(path, $"{pair.Key}.{Common.Ext}"), obj.ToString());
-                }
-            }
+            Common.Save(_index, _root);
         }
 
         private static bool IsIllegalName(string name)

@@ -47,6 +47,8 @@
             pictureBox4 = new PictureBox();
             textBox1 = new TextBox();
             toolTip1 = new ToolTip(components);
+            toolStripSeparator1 = new ToolStripSeparator();
+            toolStripMenuItem5 = new ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
             splitContainer1.Panel1.SuspendLayout();
             splitContainer1.Panel2.SuspendLayout();
@@ -96,9 +98,9 @@
             // 
             // contextMenuStrip1
             // 
-            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { toolStripMenuItem1, toolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem4 });
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { toolStripMenuItem1, toolStripMenuItem2, toolStripMenuItem3, toolStripMenuItem4, toolStripSeparator1, toolStripMenuItem5 });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(69, 92);
+            contextMenuStrip1.Size = new Size(181, 142);
             // 
             // toolStripMenuItem1
             // 
@@ -248,6 +250,16 @@
             textBox1.Size = new Size(668, 463);
             textBox1.TabIndex = 0;
             // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(177, 6);
+            // 
+            // toolStripMenuItem5
+            // 
+            toolStripMenuItem5.Name = "toolStripMenuItem5";
+            toolStripMenuItem5.Size = new Size(180, 22);
+            // 
             // EditorPanel
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
@@ -290,5 +302,7 @@
         private PictureBox pictureBox3;
         private PictureBox pictureBox4;
         private ToolTip toolTip1;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem toolStripMenuItem5;
     }
 }

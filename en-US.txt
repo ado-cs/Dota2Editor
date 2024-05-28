@@ -1,4 +1,4 @@
-"English"
+"English" //name showing as MenuItem
 {
 	"Gameinfo.FailedInRevicing"	"Failed to parse the Gameinfo file"
 	"VpkParser.SignatureMismatch"	"File is not VPK (invalid magic)"
@@ -54,6 +54,7 @@
 	"EditorPanel.ListBox.Load"	"Load Changes"
 	"EditorPanel.ListBox.Rename"	"Rename the Record"
 	"EditorPanel.ListBox.Delete"	"Delete the Record(s)"
+	"EditorPanel.ListBox.Detail"	"Show Details"
 	"EditorPanel.Tip.New"	"Open in a new window"
 	"EditorPanel.Tip.Open"	"Open in Exporler"
 	"EditorPanel.Tip.KeyMode"	"Switch to key-value mode"
@@ -71,7 +72,10 @@
 	"BatchModificationForm.Button.Close"	"Close"
 	"BatchModificationForm.SuccessInModification"	"{0} item(s) changed"
 	"BatchModificationForm.FailedInParsingNumber"	"Invalid number format"
+	"ChangesCheckingForm.Text"	"Check Changes"
+	"ChangesCheckingForm.Button.Confirm"	"Confirm"
+	"ChangesCheckingForm.Button.Cancel"	"Cancel"
 	"AboutForm.Text"	"About"
-	"AboutForm.Introduction"	"{0} v{1} allows you to modify items, heros and abilities of Dota2. Changes only works on offline games vs bots. This project is open source on"
+	"AboutForm.Introduction"	"{0} v{1} allows you to modify items, heros and abilities of Dota2. Changes only works on offline games vs bots.  This project is open source on"
 	"AboutForm.Button"	"Close"
 }

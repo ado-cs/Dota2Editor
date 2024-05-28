@@ -63,6 +63,7 @@ namespace Dota2Editor.Basic
                     { "EditorPanel.ListBox.Load", "加载" },
                     { "EditorPanel.ListBox.Rename", "重命名" },
                     { "EditorPanel.ListBox.Delete", "删除" },
+                    { "EditorPanel.ListBox.Detail", "详情" },
                     { "EditorPanel.Tip.New", "在新窗口中打开" },
                     { "EditorPanel.Tip.Open", "在资源管理器中打开" },
                     { "EditorPanel.Tip.KeyMode", "切换到键值对模式" },
@@ -80,6 +81,9 @@ namespace Dota2Editor.Basic
                     { "BatchModificationForm.Button.Close", "关闭" },
                     { "BatchModificationForm.SuccessInModification", "共 {0} 项已修改" },
                     { "BatchModificationForm.FailedInParsingNumber", "值不是有效数字" },
+                    { "ChangesCheckingForm.Text", "修改项检查" },
+                    { "ChangesCheckingForm.Button.Confirm", "确认" },
+                    { "ChangesCheckingForm.Button.Cancel", "取消" },
                     { "AboutForm.Text", "关于" },
                     { "AboutForm.Introduction", "{0} v{1} 让你可以修改 Dota2 的物品, 英雄和技能.\n修改只在本地离线和人机的游戏.\n\n这个项目开源在" },
                     { "AboutForm.Button", "关闭" },
@@ -142,6 +146,7 @@ namespace Dota2Editor.Basic
                     { "EditorPanel.ListBox.Load", "Load Changes" },
                     { "EditorPanel.ListBox.Rename", "Rename the Record" },
                     { "EditorPanel.ListBox.Delete", "Delete the Record(s)" },
+                    { "EditorPanel.ListBox.Detail", "Show Details" },
                     { "EditorPanel.Tip.New", "Open in a new window" },
                     { "EditorPanel.Tip.Open", "Open in Exporler" },
                     { "EditorPanel.Tip.KeyMode", "Switch to key-value mode" },
@@ -159,6 +164,9 @@ namespace Dota2Editor.Basic
                     { "BatchModificationForm.Button.Close", "Close" },
                     { "BatchModificationForm.SuccessInModification", "{0} item(s) changed" },
                     { "BatchModificationForm.FailedInParsingNumber", "Invalid number format" },
+                    { "ChangesCheckingForm.Text", "Check Changes" },
+                    { "ChangesCheckingForm.Button.Confirm", "Confirm" },
+                    { "ChangesCheckingForm.Button.Cancel", "Cancel" },
                     { "AboutForm.Text", "About" },
                     { "AboutForm.Introduction", "{0} v{1} allows you to modify items, heros and abilities of Dota2.\nChanges only works on offline games vs bots.\n\nThis project is open source on" },
                     { "AboutForm.Button", "Close" },
@@ -173,6 +181,16 @@ namespace Dota2Editor.Basic
 
         static Globalization() 
         {
+            /**
+            var root = new DSONObject();
+            var tmp = new DSONObject();
+            foreach (var pair in LANG[DEFAULT_LANG])
+            {
+                tmp.Add(pair.Key, new DSONValue(pair.Value.Replace('\n', ' ')));
+            }
+            root.Add("English", tmp);
+            File.WriteAllText(@"D:\" + DEFAULT_LANG + ".txt", root.ToString());
+            **/
             var supportedLangs = new Dictionary<string, string>() { { "English", "en-US" }, { "中文", "zh-CN" } };
             var langDir = Path.Combine(Environment.CurrentDirectory, "langs");
             if (Directory.Exists(langDir))
