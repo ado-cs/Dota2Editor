@@ -1,8 +1,7 @@
 ﻿using Dota2Editor.Basic;
 using Dota2Editor.Properties;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace Dota2Editor.Forms
 {
@@ -298,17 +297,29 @@ namespace Dota2Editor.Forms
 
         private void OpenEditingFolder() => Common.OpenInExplorer(_index, comboBox1.SelectedItem as string);
 
-        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => _root == null ? 0 : ModifyObject(_root.ExpandedObject, key, value, val, flag);
+        private int BatchModify(string key, string value, double val, BatchModificationForm.Operator flag) => 
+            _root == null ? 0 : ModifyObject(_root.ExpandedObject, key.Split('.'), 0, value, val, flag, true);
 
-        private static int ModifyObject(DSONObject obj, string key, string value, double val, BatchModificationForm.Operator flag)
+        private static int ModifyObject(DSONObject obj, string[] keys, int keyIndex, string value, double val, BatchModificationForm.Operator flag, bool doExpand)
         {
+            if (keys.Length == 0 || keyIndex < 0) return 0;
             var num = 0;
             foreach (var pair in obj)
             {
-                if (pair.Value is DSONObject o) num += ModifyObject(o, key, value, val, flag);
-                else if (pair.Value is DSONValue v && MatchPattern(pair.Key, key))
+                if (pair.Value is DSONObject o)
                 {
-                    if (flag == BatchModificationForm.Operator.Equals) v.Text = value;
+                    if (doExpand) o = o.ExpandedObject;
+                    if (keyIndex < keys.Length - 1 && MatchPattern(pair.Key, keys[keyIndex]))
+                        num += ModifyObject(o, keys, keyIndex + 1, value, val, flag, false);
+                    num += ModifyObject(o, keys, 0, value, val, flag, false);
+                }
+                else if (pair.Value is DSONValue v && MatchPattern(pair.Key, keys[keyIndex]))
+                {
+                    if (flag == BatchModificationForm.Operator.Equals)
+                    {
+                        v.Text = value;
+                        num++;
+                    }
                     else
                     {
                         if (v.Text.Contains(' '))
